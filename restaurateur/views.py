@@ -92,10 +92,11 @@ def view_restaurants(request):
 
 @user_passes_test(is_manager, login_url='restaurateur:login')
 def view_orders(request):
-    orders = Order.objects.only('id', 'firstname', 'lastname', 'phonenumber', 'address')
+    orders = Order.objects.count_total_price()
     order_items = [
         {
             'id': order.id,
+            'price': order.total_price,
             'name': f'{order.firstname} {order.lastname}',
             'phonenumber': order.phonenumber,
             'address': order.address
