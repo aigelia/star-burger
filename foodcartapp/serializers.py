@@ -18,6 +18,7 @@ class OrderSerializer(Serializer):
     address = CharField(error_messages={'required': 'Обязательное поле'})
     products = ProductInOrderSerializer(
         many=True,
+        write_only=True,
         allow_empty=False,
         error_messages={'empty': 'Список продуктов не может быть пустым'}
     )
