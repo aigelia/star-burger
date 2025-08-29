@@ -129,7 +129,7 @@ class OrderQuerySet(models.QuerySet):
     def count_total_price(self):
         return self.annotate(
             total_price=Sum(
-                F('items__product__price') * F('items__quantity'),
+                F('items__final_price') * F('items__quantity'),
                 output_field=DecimalField()
             )
         )
@@ -151,7 +151,7 @@ class Order(models.Model):
         return f'Заказ клиента {self.firstname} {self.lastname}'
 
     def total_price(self):
-        return sum(item.product.price * item.quantity for item in self.items.all())
+        return sum(item.final_price * item.quantity for item in self.items.all())
 
 
 class OrderProduct(models.Model):
@@ -168,6 +168,13 @@ class OrderProduct(models.Model):
         verbose_name='продукт'
     )
     quantity = models.PositiveIntegerField(default=1, verbose_name='количество')
+    final_price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(0)],
+        null=True,
+        verbose_name='стоимость продукта'
+    )
 
     class Meta:
         verbose_name = 'элемент заказа'

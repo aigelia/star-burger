@@ -76,7 +76,8 @@ def register_order(request):
         OrderProduct(
             order=order,
             product=item['product'],
-            quantity=item['quantity']
+            quantity=item['quantity'],
+            final_price=item['product'].price
         )
         for item in products_fields
     ]
@@ -86,7 +87,7 @@ def register_order(request):
         'firstname': order.firstname,
         'lastname': order.lastname,
         'phonenumber': order.phonenumber,
-        'address': order.address
+        'address': order.address,
     })
 
     return Response(order_serializer.data)

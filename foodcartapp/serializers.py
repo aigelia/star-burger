@@ -1,6 +1,6 @@
 from phonenumber_field.serializerfields import PhoneNumberField
 from rest_framework.serializers import PrimaryKeyRelatedField
-from rest_framework.serializers import Serializer
+from rest_framework.serializers import Serializer, DecimalField
 from rest_framework.serializers import CharField, IntegerField
 
 from foodcartapp.models import Product
@@ -9,7 +9,11 @@ from foodcartapp.models import Product
 class ProductInOrderSerializer(Serializer):
     product = PrimaryKeyRelatedField(queryset=Product.objects.all())
     quantity = IntegerField(min_value=1)
-
+    final_price = DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        read_only=True
+    )
 
 class OrderSerializer(Serializer):
     firstname = CharField(error_messages={'required': 'Обязательное поле'})
