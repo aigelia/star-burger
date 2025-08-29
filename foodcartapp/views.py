@@ -1,13 +1,9 @@
-import json
-
-from django.core.serializers import serialize
 from django.http import JsonResponse
-from django.shortcuts import get_object_or_404
 from django.templatetags.static import static
 from rest_framework.decorators import api_view
-from rest_framework.exceptions import ValidationError
 
 from .models import Product, Order, OrderProduct
+from .serializers import OrderSerializer
 
 
 def banners_list_api(request):
@@ -64,37 +60,25 @@ def product_list_api(request):
 
 @api_view(['POST'])
 def register_order(request):
-    raw_order = request.data
-    required_fields = ['firstname', 'lastname', 'phonenumber', 'address']
+    serializer = OrderSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
 
-    errors_required = {}
-    errors_type = {}
-    for field in required_fields:
-        if not raw_order.get(field):
-            errors_required[field] = 'Обязательное поле'
-        if not isinstance(field, str):
-            errors_type[field] = 'Тип поля - не str'
-    if errors_required or errors_type:
-        raise ValidationError(errors_required, errors_type)
+    order = Order.objects.create(
+        firstname=serializer.validated_data['firstname'],
+        lastname=serializer.validated_data['lastname'],
+        phonenumber=serializer.validated_data['phonenumber'],
+        address=serializer.validated_data['address']
+    )
 
-    else:
-        order = Order.objects.create(
-            firstname=raw_order.get('firstname'),
-            lastname=raw_order.get('lastname'),
-            phonenumber=raw_order.get('phonenumber'),
-            address=raw_order.get('address')
+    products_fields = serializer.validated_data['products']
+    products_objects = [
+        OrderProduct(
+            order=order,
+            product=item['product'],
+            quantity=item['quantity']
         )
-    raw_products = raw_order.get('products')
-    if not raw_products:
-        raise ValidationError({'products': 'поле не содержит значений, имеет значение null или отсутствует'})
-    elif not isinstance(raw_products, list):
-        raise ValidationError({'products': 'тип данных поля должен быть list'})
-    else:
-        for item in raw_products:
-            product_obj = get_object_or_404(Product, id=item['product'])
-            OrderProduct.objects.create(
-                order=order,
-                product=product_obj,
-                quantity=item['quantity']
-            )
+        for item in products_fields
+    ]
+    OrderProduct.objects.bulk_create(products_objects)
+
     return JsonResponse({'success': True})
