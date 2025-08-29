@@ -5,6 +5,7 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.templatetags.static import static
 from rest_framework.decorators import api_view
+from rest_framework.exceptions import ValidationError
 
 from .models import Product, Order, OrderProduct
 
@@ -72,11 +73,16 @@ def register_order(request):
         address=raw_order.get('address')
     )
     raw_products = raw_order.get('products')
-    for item in raw_products:
-        product_obj = get_object_or_404(Product, id=item['product'])
-        OrderProduct.objects.create(
-            order=order,
-            product=product_obj,
-            quantity=item['quantity']
-        )
+    if not raw_products:
+        raise ValidationError({'products': 'поле не содержит значений, имеет значение null или отсутствует'})
+    elif not isinstance(raw_products, list):
+        raise ValidationError({'products': 'тип данных поля должен быть list'})
+    else:
+        for item in raw_products:
+            product_obj = get_object_or_404(Product, id=item['product'])
+            OrderProduct.objects.create(
+                order=order,
+                product=product_obj,
+                quantity=item['quantity']
+            )
     return JsonResponse({'success': True})
