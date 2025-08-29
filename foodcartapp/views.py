@@ -65,13 +65,25 @@ def product_list_api(request):
 @api_view(['POST'])
 def register_order(request):
     raw_order = request.data
-    print(raw_order)
-    order = Order.objects.create(
-        firstname=raw_order.get('firstname'),
-        lastname=raw_order.get('lastname'),
-        phonenumber=raw_order.get('phonenumber'),
-        address=raw_order.get('address')
-    )
+    required_fields = ['firstname', 'lastname', 'phonenumber', 'address']
+
+    errors_required = {}
+    errors_type = {}
+    for field in required_fields:
+        if not raw_order.get(field):
+            errors_required[field] = 'Обязательное поле'
+        if not isinstance(field, str):
+            errors_type[field] = 'Тип поля - не str'
+    if errors_required or errors_type:
+        raise ValidationError(errors_required, errors_type)
+
+    else:
+        order = Order.objects.create(
+            firstname=raw_order.get('firstname'),
+            lastname=raw_order.get('lastname'),
+            phonenumber=raw_order.get('phonenumber'),
+            address=raw_order.get('address')
+        )
     raw_products = raw_order.get('products')
     if not raw_products:
         raise ValidationError({'products': 'поле не содержит значений, имеет значение null или отсутствует'})
