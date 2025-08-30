@@ -1,5 +1,6 @@
 from django.db import transaction
 from django.http import JsonResponse
+from django.template.defaulttags import comment
 from django.templatetags.static import static
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -79,7 +80,8 @@ def register_order(request):
             order=order,
             product=item['product'],
             quantity=item['quantity'],
-            final_price=item['product'].price
+            final_price=item['product'].price,
+            comment=''
         )
         for item in products_fields
     ]
@@ -90,6 +92,7 @@ def register_order(request):
         'lastname': order.lastname,
         'phonenumber': order.phonenumber,
         'address': order.address,
+        'comment': order.comment
     })
 
     return Response(order_serializer.data)

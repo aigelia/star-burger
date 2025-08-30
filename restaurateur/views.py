@@ -100,7 +100,8 @@ def view_orders(request):
             'price': order.total_price,
             'name': f'{order.firstname} {order.lastname}',
             'phonenumber': order.phonenumber,
-            'address': order.address
+            'address': order.address,
+            'comment': order.comment
         }
         for order in orders
     ]
