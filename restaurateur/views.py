@@ -96,6 +96,7 @@ def view_orders(request):
     order_items = [
         {
             'id': order.id,
+            'status': order.get_status_display(),
             'price': order.total_price,
             'name': f'{order.firstname} {order.lastname}',
             'phonenumber': order.phonenumber,

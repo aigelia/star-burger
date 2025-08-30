@@ -136,6 +136,18 @@ class OrderQuerySet(models.QuerySet):
 
 
 class Order(models.Model):
+    STATUS_CHOICES = [
+        ('waiting_for_acceptation', 'Ожидает подтверждения'),
+        ('sent_to_restaurant', 'Передан в ресторан'),
+        ('given_to_courier', 'Передан курьеру'),
+        ('completed', 'завершен'),
+    ]
+    status = models.CharField(
+        max_length=30,
+        choices=STATUS_CHOICES,
+        default='waiting_for_acceptation',
+        verbose_name='статус заказа'
+    )
     firstname = models.CharField(max_length=100, verbose_name='Имя')
     lastname = models.CharField(max_length=100, verbose_name='Фамилия', db_index=True)
     phonenumber = PhoneNumberField(verbose_name='Мобильный телефон', db_index=True)
@@ -146,6 +158,9 @@ class Order(models.Model):
     class Meta:
         verbose_name = 'заказ'
         verbose_name_plural = 'заказы'
+        indexes = [
+            models.Index(fields=['status',]),
+        ]
 
     def __str__(self):
         return f'Заказ клиента {self.firstname} {self.lastname}'
