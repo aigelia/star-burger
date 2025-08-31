@@ -145,11 +145,22 @@ class Order(models.Model):
         ('given_to_courier', 'Передан курьеру'),
         ('completed', 'завершен'),
     ]
+    PAYMENT_CHOICES = [
+        ('cash', 'Наличные'),
+        ('electronic', 'Электронно'),
+        ('unknown', 'Не указан')
+    ]
     status = models.CharField(
         max_length=30,
         choices=STATUS_CHOICES,
         default='waiting_for_acceptation',
         verbose_name='статус заказа'
+    )
+    payment_method = models.CharField(
+        max_length=30,
+        choices=PAYMENT_CHOICES,
+        default='unknown',
+        verbose_name='способ оплаты'
     )
     firstname = models.CharField(max_length=100, verbose_name='Имя')
     lastname = models.CharField(max_length=100, verbose_name='Фамилия', db_index=True)
@@ -182,7 +193,9 @@ class Order(models.Model):
                     'status',
                     'registrated_at',
                     'called_at',
-                    'delivered_at']
+                    'delivered_at',
+                    'payment_method'
+                ]
             ),
         ]
 

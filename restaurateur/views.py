@@ -101,7 +101,8 @@ def view_orders(request):
             'name': f'{order.firstname} {order.lastname}',
             'phonenumber': order.phonenumber,
             'address': order.address,
-            'comment': order.comment
+            'comment': order.comment,
+            'payment_method': order.get_payment_method_display()
         }
         for order in orders
     ]
