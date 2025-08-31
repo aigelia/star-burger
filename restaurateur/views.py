@@ -1,5 +1,5 @@
 from django import forms
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Case, When, IntegerField
 from django.shortcuts import redirect, render
 from django.views import View
 from django.urls import reverse_lazy
@@ -8,8 +8,8 @@ from django.contrib.auth.decorators import user_passes_test
 from django.contrib.auth import authenticate, login
 from django.contrib.auth import views as auth_views
 
-
 from foodcartapp.models import Product, Restaurant, Order, OrderProduct
+from restaurateur.geocoder_helpers import count_distance_to_restaurant
 
 
 class Login(forms.Form):
@@ -96,11 +96,30 @@ def view_orders(request):
     orders = Order.objects.prefetch_related(
         Prefetch('items', queryset=OrderProduct.objects.select_related('product'))
     ).select_related('cooking_by')
-    for order in orders:
-        print(order.id, list(order.get_available_restaurants()))
 
-    order_items = [
-        {
+    orders = orders.annotate(
+        status_order=Case(
+            When(status='waiting_for_acceptation', then=0),
+            When(status='sent_to_restaurant', then=1),
+            When(status='given_to_courier', then=2),
+            When(status='completed', then=3),
+            default=99,
+            output_field=IntegerField()
+        )
+    ).order_by('status_order')
+
+    order_items = []
+
+    for order in orders:
+        available_restaurants = {}
+        for restaurant in order.get_available_restaurants():
+            distance = count_distance_to_restaurant(order.address, restaurant.address)
+            if distance is not None:
+                available_restaurants[restaurant.name] = distance
+
+        available_restaurants = dict(sorted(available_restaurants.items(), key=lambda item: item[1]))
+
+        order_items.append({
             'id': order.id,
             'status': order.get_status_display(),
             'price': order.total_price,
@@ -109,10 +128,8 @@ def view_orders(request):
             'address': order.address,
             'comment': order.comment,
             'payment_method': order.get_payment_method_display(),
-            'available_restaurants': [restaurant.name for restaurant in order.get_available_restaurants()],
+            'available_restaurants': available_restaurants,
             'cooking_by': order.cooking_by
-        }
-        for order in orders
-    ]
-    print(order_items)
-    return render(request, template_name='order_items.html', context={'order_items': order_items})
+        })
+
+    return render(request, 'order_items.html', context={'order_items': order_items})
