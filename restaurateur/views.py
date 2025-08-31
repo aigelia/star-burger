@@ -1,4 +1,5 @@
 from django import forms
+from django.db.models import Prefetch
 from django.shortcuts import redirect, render
 from django.views import View
 from django.urls import reverse_lazy
@@ -8,7 +9,7 @@ from django.contrib.auth import authenticate, login
 from django.contrib.auth import views as auth_views
 
 
-from foodcartapp.models import Product, Restaurant, Order
+from foodcartapp.models import Product, Restaurant, Order, OrderProduct
 
 
 class Login(forms.Form):
@@ -92,7 +93,12 @@ def view_restaurants(request):
 
 @user_passes_test(is_manager, login_url='restaurateur:login')
 def view_orders(request):
-    orders = Order.objects.count_total_price()
+    orders = Order.objects.prefetch_related(
+        Prefetch('items', queryset=OrderProduct.objects.select_related('product'))
+    ).select_related('cooking_by')
+    for order in orders:
+        print(order.id, list(order.get_available_restaurants()))
+
     order_items = [
         {
             'id': order.id,
@@ -102,8 +108,11 @@ def view_orders(request):
             'phonenumber': order.phonenumber,
             'address': order.address,
             'comment': order.comment,
-            'payment_method': order.get_payment_method_display()
+            'payment_method': order.get_payment_method_display(),
+            'available_restaurants': [restaurant.name for restaurant in order.get_available_restaurants()],
+            'cooking_by': order.cooking_by
         }
         for order in orders
     ]
+    print(order_items)
     return render(request, template_name='order_items.html', context={'order_items': order_items})
