@@ -1,10 +1,23 @@
-from datetime import timezone
-
 from django.db import models
 from django.core.validators import MinValueValidator
-from django.db.models import Sum, F, DecimalField
+from django.db.models import Sum, F, DecimalField, Count
 from django.utils import timezone
 from phonenumber_field.modelfields import PhoneNumberField
+
+
+class RestrauntQuerySet(models.QuerySet):
+    def available_for_order(self, order):
+        ordered_products = [item.product_id for item in order.items.all()]
+        num_products = len(ordered_products)
+
+        return self.filter(
+            menu_items__product_id__in=ordered_products,
+            menu_items__availability=True
+        ).annotate(
+            matched_products=Count('menu_items__product', distinct=True)
+        ).filter(
+            matched_products=num_products
+        )
 
 
 class Restaurant(models.Model):
@@ -22,6 +35,8 @@ class Restaurant(models.Model):
         max_length=50,
         blank=True,
     )
+
+    objects = RestrauntQuerySet.as_manager()
 
     class Meta:
         verbose_name = 'ресторан'
@@ -167,6 +182,13 @@ class Order(models.Model):
     phonenumber = PhoneNumberField(verbose_name='Мобильный телефон', db_index=True)
     address = models.TextField(verbose_name='Адрес доставки')
     comment = models.TextField(verbose_name='Комментарий', blank=True)
+    cooking_by = models.ForeignKey(
+        Restaurant,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        verbose_name="Ресторан, готовящий заказ"
+    )
     registrated_at = models.DateTimeField(
         default=timezone.now,
         verbose_name='Дата и время заказа'
@@ -183,6 +205,23 @@ class Order(models.Model):
     )
 
     objects = OrderQuerySet.as_manager()
+
+    def total_price(self):
+        return sum(item.final_price * item.quantity for item in self.items.all())
+
+    def get_available_restaurants(self):
+        """
+        Возвращает рестораны, которые могут приготовить все блюда из заказа.
+        """
+        return Restaurant.objects.available_for_order(self)
+
+    def available_restaurants_display(self):
+        """
+        Всегда возвращает список ресторанов, которые могут приготовить все блюда из заказа.
+        """
+        return ", ".join([r.name for r in self.get_available_restaurants()])
+
+    available_restaurants_display.short_description = "Доступные рестораны"
 
     class Meta:
         verbose_name = 'заказ'
@@ -201,9 +240,6 @@ class Order(models.Model):
 
     def __str__(self):
         return f'Заказ клиента {self.firstname} {self.lastname}'
-
-    def total_price(self):
-        return sum(item.final_price * item.quantity for item in self.items.all())
 
 
 class OrderProduct(models.Model):

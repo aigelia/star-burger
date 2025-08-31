@@ -116,8 +116,29 @@ class ProductAdmin(admin.ModelAdmin):
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
     inlines = [OrderProductInline]
-    list_display = ['id', 'firstname', 'lastname', 'phonenumber']
+    list_display = [
+        'id',
+        'firstname',
+        'lastname',
+        'phonenumber',
+        'cooking_by',
+        'available_restaurants_display',
+    ]
+    readonly_fields = ['available_restaurants_display']
     search_fields = ['firstname', 'lastname', 'phonenumber']
+    fields = [
+        'firstname',
+        'lastname',
+        'phonenumber',
+        'address',
+        'status',
+        'available_restaurants_display',
+        'cooking_by',
+        'comment',
+        'registrated_at',
+        'called_at',
+        'delivered_at',
+    ]
 
     def response_change(self, request, obj):
         next_url = request.POST.get('next') or request.GET.get('next')
