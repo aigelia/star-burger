@@ -81,7 +81,6 @@ def register_order(request):
             product=item['product'],
             quantity=item['quantity'],
             final_price=item['product'].price,
-            comment=''
         )
         for item in products_fields
     ]
