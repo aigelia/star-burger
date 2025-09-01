@@ -7,17 +7,24 @@ from phonenumber_field.modelfields import PhoneNumberField
 
 class RestrauntQuerySet(models.QuerySet):
     def available_for_order(self, order):
-        ordered_products = [item.product_id for item in order.items.all()]
+        ordered_products = list(order.items.values_list('product_id', flat=True))
         num_products = len(ordered_products)
 
-        return self.filter(
-            menu_items__product_id__in=ordered_products,
-            menu_items__availability=True
-        ).annotate(
-            matched_products=Count('menu_items__product', distinct=True)
-        ).filter(
-            matched_products=num_products
-        )
+        menu_items = RestaurantMenuItem.objects.filter(
+            availability=True,
+            product_id__in=ordered_products
+        ).select_related('restaurant', 'product')
+
+        from collections import defaultdict
+        restaurant_matches = defaultdict(set)
+        for mi in menu_items:
+            restaurant_matches[mi.restaurant_id].add(mi.product_id)
+
+        restaurant_ids = [
+            rid for rid, products in restaurant_matches.items()
+            if len(products) == num_products
+        ]
+        return self.filter(id__in=restaurant_ids)
 
 
 class Restaurant(models.Model):
@@ -48,12 +55,7 @@ class Restaurant(models.Model):
 
 class ProductQuerySet(models.QuerySet):
     def available(self):
-        products = (
-            RestaurantMenuItem.objects
-            .filter(availability=True)
-            .values_list('product')
-        )
-        return self.filter(pk__in=products)
+        return self.filter(menu_items__availability=True).distinct()
 
 
 class ProductCategory(models.Model):
@@ -143,16 +145,6 @@ class RestaurantMenuItem(models.Model):
         return f'{self.restaurant.name} - {self.product.name}'
 
 
-class OrderQuerySet(models.QuerySet):
-    def count_total_price(self):
-        return self.annotate(
-            total_price=Sum(
-                F('items__final_price') * F('items__quantity'),
-                output_field=DecimalField()
-            )
-        )
-
-
 class Order(models.Model):
     STATUS_CHOICES = [
         ('waiting_for_acceptation', 'Ожидает подтверждения'),
@@ -204,10 +196,11 @@ class Order(models.Model):
         verbose_name='Дата и время доставки'
     )
 
-    objects = OrderQuerySet.as_manager()
-
     def total_price(self):
-        return sum(item.final_price * item.quantity for item in self.items.all())
+        result = self.items.aggregate(
+            total=Sum(F('final_price') * F('quantity'), output_field=DecimalField())
+        )['total']
+        return result or 0
 
     def get_available_restaurants(self):
         """
@@ -260,7 +253,7 @@ class OrderProduct(models.Model):
         max_digits=10,
         decimal_places=2,
         validators=[MinValueValidator(0)],
-        null=True,
+        default=0,
         verbose_name='стоимость продукта'
     )
 
@@ -284,6 +277,9 @@ class Location(models.Model):
     class Meta:
         verbose_name = 'локация'
         verbose_name_plural = 'локации'
+        indexes = [
+            models.Index(fields=['lat', 'lng'])
+        ]
 
     def __str__(self):
         return self.address or f"{self.lat}, {self.lng}"

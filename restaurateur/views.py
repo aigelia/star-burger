@@ -1,5 +1,6 @@
 from django import forms
-from django.db.models import Prefetch, Case, When, IntegerField
+from django.db.models import Prefetch, Case, When, IntegerField, Sum, F, DecimalField
+
 from django.shortcuts import redirect, render
 from django.views import View
 from django.urls import reverse_lazy
@@ -92,14 +93,16 @@ def view_restaurants(request):
 
 @user_passes_test(is_manager, login_url='restaurateur:login')
 def view_orders(request):
-    # Подгружаем заказы с продуктами и заранее рассчитанными локациями
     orders = Order.objects.prefetch_related(
-        Prefetch('items', queryset=OrderProduct.objects.select_related('product')),
-        Prefetch('locations', queryset=OrderLocation.objects.select_related('point_a', 'point_b', 'restaurant'))
-    ).select_related('cooking_by')
-
-    # Сортировка по статусу
-    orders = orders.annotate(
+        Prefetch(
+            'items',
+            queryset=OrderProduct.objects.select_related('product')
+        ),
+        Prefetch(
+            'locations',
+            queryset=OrderLocation.objects.select_related('point_a', 'point_b', 'restaurant')
+        )
+    ).select_related('cooking_by').annotate(
         status_order=Case(
             When(status='waiting_for_acceptation', then=0),
             When(status='sent_to_restaurant', then=1),
@@ -110,25 +113,23 @@ def view_orders(request):
         )
     ).order_by('status_order')
 
+    orders = orders.annotate(
+        total_price=Sum(F('items__final_price') * F('items__quantity'), output_field=DecimalField())
+    )
+
     order_items = []
 
     for order in orders:
-        # Формируем словарь ресторан → расстояние
-        available_restaurants = {}
-        for loc in order.locations.all():
-            # Проверяем, что ресторан есть, а расстояние рассчитано
-            if loc.restaurant:
-                # Если distance_km None, можно поставить 0 или пропустить, тут ставим 0
-                distance = loc.distance_km if loc.distance_km is not None else 0
-                available_restaurants[loc.restaurant.name] = distance
-
-        # Сортируем по расстоянию
+        available_restaurants = {
+            loc.restaurant.name: loc.distance_km if loc.distance_km is not None else 0
+            for loc in order.locations.all() if loc.restaurant
+        }
         available_restaurants = dict(sorted(available_restaurants.items(), key=lambda item: item[1]))
 
         order_items.append({
             'id': order.id,
             'status': order.get_status_display(),
-            'price': order.total_price,
+            'price': order.total_price or 0,
             'name': f'{order.firstname} {order.lastname}',
             'phonenumber': order.phonenumber,
             'address': order.address,

@@ -94,25 +94,31 @@ def register_order(request):
         address=order.address
     )
 
-    available_restaurants = Restaurant.objects.available_for_order(order)
+    available_restaurants = list(Restaurant.objects.available_for_order(order))
+
+    restaurant_points = []
+    for restaurant in available_restaurants:
+        coords = fetch_coordinates(restaurant.address)
+        restaurant_points.append(
+            Location(
+                lat=coords[0] if coords else None,
+                lng=coords[1] if coords else None,
+                address=restaurant.address
+            )
+        )
+    Location.objects.bulk_create(restaurant_points)
 
     order_locations = []
-    for restaurant in available_restaurants:
-        restaurant_coords = fetch_coordinates(restaurant.address)
-        point_a = Location.objects.create(
-            lat=restaurant_coords[0] if restaurant_coords else None,
-            lng=restaurant_coords[1] if restaurant_coords else None,
-            address=restaurant.address
-        )
-
+    for i, restaurant in enumerate(available_restaurants):
         distance = None
-        if client_coords and restaurant_coords:
+        restaurant_coords = (restaurant_points[i].lat, restaurant_points[i].lng)
+        if client_coords and restaurant_coords[0] is not None and restaurant_coords[1] is not None:
             distance = count_distance_to_restaurant(order.address, restaurant.address)
 
         order_locations.append(
             OrderLocation(
                 order=order,
-                point_a=point_a,
+                point_a=restaurant_points[i],
                 point_b=point_b,
                 distance_km=distance,
                 restaurant=restaurant
