@@ -274,3 +274,44 @@ class OrderProduct(models.Model):
 
     def __str__(self):
         return f'{self.product.name} x{self.quantity}'
+
+
+class Location(models.Model):
+    lng = models.DecimalField('Долгота', max_digits=9, decimal_places=6)
+    lat = models.DecimalField('Широта', max_digits=9, decimal_places=6)
+    address = models.CharField('Адрес', max_length=255, blank=True)
+
+    class Meta:
+        verbose_name = 'локация'
+        verbose_name_plural = 'локации'
+
+    def __str__(self):
+        return self.address or f"{self.lat}, {self.lng}"
+
+
+class OrderLocation(models.Model):
+    order = models.OneToOneField(
+        'Order',
+        related_name='location',
+        on_delete=models.CASCADE,
+        verbose_name='заказ'
+    )
+    point_a = models.ForeignKey(
+        Location,
+        related_name='as_origin',
+        on_delete=models.CASCADE,
+        verbose_name='точка А (ресторан)'
+    )
+    point_b = models.ForeignKey(
+        Location,
+        related_name='as_destination',
+        on_delete=models.CASCADE,
+        verbose_name='точка B (клиент)'
+    )
+
+    class Meta:
+        verbose_name = 'локация заказа'
+        verbose_name_plural = 'локации заказов'
+
+    def __str__(self):
+        return f"Заказ {self.order.id}: {self.point_a} → {self.point_b}"
