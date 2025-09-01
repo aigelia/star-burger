@@ -4,7 +4,8 @@ from django.templatetags.static import static
 from django.utils.html import format_html
 from django.utils.http import url_has_allowed_host_and_scheme
 
-from .models import Product, Order, OrderProduct
+from geolocations.services import fetch_coordinates, count_distance_to_restaurant
+from .models import Product, Order, OrderProduct, Location, OrderLocation
 from .models import ProductCategory
 from .models import Restaurant
 from .models import RestaurantMenuItem
@@ -140,6 +141,43 @@ class OrderAdmin(admin.ModelAdmin):
         'delivered_at',
     ]
 
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+
+        client_coords = fetch_coordinates(obj.address)
+        point_b = Location.objects.create(
+            lat=client_coords[0] if client_coords else None,
+            lng=client_coords[1] if client_coords else None,
+            address=obj.address
+        )
+        OrderLocation.objects.filter(order=obj).delete()
+
+        order_locations = []
+        available_restaurants = Restaurant.objects.available_for_order(obj)
+        for restaurant in available_restaurants:
+            restaurant_coords = fetch_coordinates(restaurant.address)
+            point_a = Location.objects.create(
+                lat=restaurant_coords[0] if restaurant_coords else None,
+                lng=restaurant_coords[1] if restaurant_coords else None,
+                address=restaurant.address
+            )
+
+            distance = None
+            if client_coords and restaurant_coords:
+                distance = count_distance_to_restaurant(obj.address, restaurant.address)
+
+            order_locations.append(
+                OrderLocation(
+                    order=obj,
+                    point_a=point_a,
+                    point_b=point_b,
+                    restaurant=restaurant,
+                    distance_km=distance
+                )
+            )
+
+        OrderLocation.objects.bulk_create(order_locations)
+
     def response_change(self, request, obj):
         next_url = request.POST.get('next') or request.GET.get('next')
         if next_url and url_has_allowed_host_and_scheme(
@@ -149,4 +187,3 @@ class OrderAdmin(admin.ModelAdmin):
         ):
             return redirect(next_url)
         return super().response_change(request, obj)
-

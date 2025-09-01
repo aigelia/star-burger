@@ -8,8 +8,7 @@ from django.contrib.auth.decorators import user_passes_test
 from django.contrib.auth import authenticate, login
 from django.contrib.auth import views as auth_views
 
-from foodcartapp.models import Product, Restaurant, Order, OrderProduct
-from restaurateur.geocoder_helpers import count_distance_to_restaurant
+from foodcartapp.models import Product, Restaurant, Order, OrderProduct, OrderLocation
 
 
 class Login(forms.Form):
@@ -93,10 +92,13 @@ def view_restaurants(request):
 
 @user_passes_test(is_manager, login_url='restaurateur:login')
 def view_orders(request):
+    # Подгружаем заказы с продуктами и заранее рассчитанными локациями
     orders = Order.objects.prefetch_related(
-        Prefetch('items', queryset=OrderProduct.objects.select_related('product'))
+        Prefetch('items', queryset=OrderProduct.objects.select_related('product')),
+        Prefetch('locations', queryset=OrderLocation.objects.select_related('point_a', 'point_b', 'restaurant'))
     ).select_related('cooking_by')
 
+    # Сортировка по статусу
     orders = orders.annotate(
         status_order=Case(
             When(status='waiting_for_acceptation', then=0),
@@ -111,12 +113,16 @@ def view_orders(request):
     order_items = []
 
     for order in orders:
+        # Формируем словарь ресторан → расстояние
         available_restaurants = {}
-        for restaurant in order.get_available_restaurants():
-            distance = count_distance_to_restaurant(order.address, restaurant.address)
-            if distance is not None:
-                available_restaurants[restaurant.name] = distance
+        for loc in order.locations.all():
+            # Проверяем, что ресторан есть, а расстояние рассчитано
+            if loc.restaurant:
+                # Если distance_km None, можно поставить 0 или пропустить, тут ставим 0
+                distance = loc.distance_km if loc.distance_km is not None else 0
+                available_restaurants[loc.restaurant.name] = distance
 
+        # Сортируем по расстоянию
         available_restaurants = dict(sorted(available_restaurants.items(), key=lambda item: item[1]))
 
         order_items.append({

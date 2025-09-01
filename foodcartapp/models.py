@@ -290,11 +290,18 @@ class Location(models.Model):
 
 
 class OrderLocation(models.Model):
-    order = models.OneToOneField(
+    order = models.ForeignKey(
         'Order',
-        related_name='location',
+        related_name='locations',
         on_delete=models.CASCADE,
         verbose_name='заказ'
+    )
+    restaurant = models.ForeignKey(
+        Restaurant,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        verbose_name='ресторан'
     )
     point_a = models.ForeignKey(
         Location,
@@ -308,10 +315,12 @@ class OrderLocation(models.Model):
         on_delete=models.CASCADE,
         verbose_name='точка B (клиент)'
     )
+    distance_km = models.DecimalField(null=True, max_digits=9, decimal_places=2)
 
     class Meta:
         verbose_name = 'локация заказа'
         verbose_name_plural = 'локации заказов'
+
 
     def __str__(self):
         return f"Заказ {self.order.id}: {self.point_a} → {self.point_b}"
