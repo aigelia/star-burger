@@ -1,6 +1,6 @@
 from django.db import models
 from django.core.validators import MinValueValidator
-from django.db.models import Sum, F, DecimalField, Count
+from django.db.models import Sum, F, DecimalField
 from django.utils import timezone
 from phonenumber_field.modelfields import PhoneNumberField
 
@@ -253,7 +253,6 @@ class OrderProduct(models.Model):
         max_digits=10,
         decimal_places=2,
         validators=[MinValueValidator(0)],
-        default=0,
         verbose_name='стоимость продукта'
     )
 
