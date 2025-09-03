@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 from django.db import models
 from django.core.validators import MinValueValidator
 from django.db.models import Sum, F, DecimalField
@@ -17,7 +19,6 @@ class RestrauntQuerySet(models.QuerySet):
             product_id__in=ordered_products
         ).select_related('restaurant', 'product')
 
-        from collections import defaultdict
         restaurant_matches = defaultdict(set)
         for mi in menu_items:
             restaurant_matches[mi.restaurant_id].add(mi.product_id)
