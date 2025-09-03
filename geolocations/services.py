@@ -1,12 +1,14 @@
-from geopy.distance import geodesic
 import requests
-from environs import env
+
+from django.conf import settings
+from geopy.distance import geodesic
+
 
 def fetch_coordinates(address):
     base_url = "https://geocode-maps.yandex.ru/1.x"
     response = requests.get(base_url, params={
         "geocode": address,
-        "apikey": env.str('YANDEX_API_GEOCODER'),
+        "apikey": settings.YANDEX_API_GEOCODER_KEY,
         "format": "json",
     })
     response.raise_for_status()
