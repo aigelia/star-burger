@@ -5,10 +5,11 @@ from django.utils.html import format_html
 from django.utils.http import url_has_allowed_host_and_scheme
 
 from geolocations.services import fetch_coordinates, count_distance_to_restaurant
-from .models import Product, Order, OrderProduct, Location, OrderLocation
+from .models import Product, Order, OrderProduct, OrderLocation
 from .models import ProductCategory
 from .models import Restaurant
 from .models import RestaurantMenuItem
+from geolocations.models import Location
 
 
 class RestaurantMenuItemInline(admin.TabularInline):

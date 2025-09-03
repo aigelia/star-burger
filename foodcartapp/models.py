@@ -4,6 +4,8 @@ from django.db.models import Sum, F, DecimalField
 from django.utils import timezone
 from phonenumber_field.modelfields import PhoneNumberField
 
+from geolocations.models import Location
+
 
 class RestrauntQuerySet(models.QuerySet):
     def available_for_order(self, order):
@@ -266,22 +268,6 @@ class OrderProduct(models.Model):
 
     def __str__(self):
         return f'{self.product.name} x{self.quantity}'
-
-
-class Location(models.Model):
-    lng = models.DecimalField('Долгота', max_digits=9, decimal_places=6)
-    lat = models.DecimalField('Широта', max_digits=9, decimal_places=6)
-    address = models.CharField('Адрес', max_length=255, blank=True)
-
-    class Meta:
-        verbose_name = 'локация'
-        verbose_name_plural = 'локации'
-        indexes = [
-            models.Index(fields=['lat', 'lng'])
-        ]
-
-    def __str__(self):
-        return self.address or f"{self.lat}, {self.lng}"
 
 
 class OrderLocation(models.Model):

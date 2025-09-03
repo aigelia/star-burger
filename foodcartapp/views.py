@@ -1,12 +1,12 @@
 from django.db import transaction
 from django.http import JsonResponse
-from django.template.defaulttags import comment
 from django.templatetags.static import static
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from geolocations.services import fetch_coordinates, count_distance_to_restaurant
-from .models import Product, Order, OrderProduct, OrderLocation, Location, Restaurant
+from .models import Product, Order, OrderProduct, OrderLocation, Restaurant
+from geolocations.models import Location
 from .serializers import OrderSerializer
 
 
