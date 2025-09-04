@@ -4,7 +4,7 @@ from django.db import models
 class Location(models.Model):
     lng = models.DecimalField('Долгота', max_digits=9, decimal_places=6)
     lat = models.DecimalField('Широта', max_digits=9, decimal_places=6)
-    address = models.CharField('Адрес', max_length=255, blank=True)
+    address = models.CharField('Адрес', max_length=255, blank=True, unique=True)
 
     class Meta:
         verbose_name = 'локация'
