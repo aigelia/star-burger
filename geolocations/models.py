@@ -9,10 +9,6 @@ class Location(models.Model):
     class Meta:
         verbose_name = 'локация'
         verbose_name_plural = 'локации'
-        indexes = [
-            models.Index(fields=['lat', 'lng'])
-        ]
-        db_table = 'foodcartapp_location'
 
     def __str__(self):
         return self.address or f"{self.lat}, {self.lng}"
