@@ -9,7 +9,7 @@ from django.contrib.auth.decorators import user_passes_test
 from django.contrib.auth import authenticate, login
 from django.contrib.auth import views as auth_views
 
-from foodcartapp.models import Product, Restaurant, Order, OrderProduct, OrderLocation
+from foodcartapp.models import Product, Restaurant, Order, OrderProduct
 
 
 class Login(forms.Form):
@@ -98,10 +98,6 @@ def view_orders(request):
             'items',
             queryset=OrderProduct.objects.select_related('product')
         ),
-        Prefetch(
-            'locations',
-            queryset=OrderLocation.objects.select_related('point_a', 'point_b', 'restaurant')
-        )
     ).select_related('cooking_by').annotate(
         status_order=Case(
             When(status='waiting_for_acceptation', then=0),
@@ -121,10 +117,9 @@ def view_orders(request):
 
     for order in orders:
         available_restaurants = {
-            loc.restaurant.name: loc.distance_km if loc.distance_km is not None else 0
-            for loc in order.locations.all() if loc.restaurant
+            restaurant.name: 1
+            for restaurant in Restaurant.objects.available_for_order(order)
         }
-        available_restaurants = dict(sorted(available_restaurants.items(), key=lambda item: item[1]))
 
         order_items.append({
             'id': order.id,
