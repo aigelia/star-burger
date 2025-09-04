@@ -55,7 +55,9 @@
             Нет доступных ресторанов
           {% endif %}
         </td>
-        <td><a href="{% url "admin:foodcartapp_order_change" object_id=item.id %}?next={{ request.path }}">Редактировать</a></td>
+        <td>
+          <a href="{% url 'admin:foodcartapp_order_change' object_id=item.id %}?next={{ request.path|urlencode }}">Редактировать</a>
+        </td>
       </tr>
     {% endfor %}
    </table>
