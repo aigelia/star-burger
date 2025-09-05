@@ -6,29 +6,6 @@ from django.db.models import Sum, F, DecimalField
 from django.utils import timezone
 from phonenumber_field.modelfields import PhoneNumberField
 
-from geolocations.models import Location
-
-
-class RestrauntQuerySet(models.QuerySet):
-    def available_for_order(self, order):
-        ordered_products = list(order.items.values_list('product_id', flat=True))
-        num_products = len(ordered_products)
-
-        menu_items = RestaurantMenuItem.objects.filter(
-            availability=True,
-            product_id__in=ordered_products
-        ).select_related('restaurant', 'product')
-
-        restaurant_matches = defaultdict(set)
-        for mi in menu_items:
-            restaurant_matches[mi.restaurant_id].add(mi.product_id)
-
-        restaurant_ids = [
-            rid for rid, products in restaurant_matches.items()
-            if len(products) == num_products
-        ]
-        return self.filter(id__in=restaurant_ids)
-
 
 class Restaurant(models.Model):
     name = models.CharField(
@@ -45,8 +22,6 @@ class Restaurant(models.Model):
         max_length=50,
         blank=True,
     )
-
-    objects = RestrauntQuerySet.as_manager()
 
     class Meta:
         verbose_name = 'ресторан'
@@ -226,20 +201,6 @@ class Order(models.Model):
             total=Sum(F('final_price') * F('quantity'), output_field=DecimalField())
         )['total']
         return result or 0
-
-    def get_available_restaurants(self):
-        """
-        Возвращает рестораны, которые могут приготовить все блюда из заказа.
-        """
-        return Restaurant.objects.available_for_order(self)
-
-    def available_restaurants_display(self):
-        """
-        Всегда возвращает список ресторанов, которые могут приготовить все блюда из заказа.
-        """
-        return ", ".join([r.name for r in self.get_available_restaurants()])
-
-    available_restaurants_display.short_description = "Доступные рестораны"
 
     objects = OrderQuerySet.as_manager()
 
