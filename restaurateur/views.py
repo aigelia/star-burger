@@ -10,6 +10,7 @@ from django.contrib.auth import authenticate, login
 from django.contrib.auth import views as auth_views
 
 from foodcartapp.models import Product, Restaurant, Order, OrderProduct
+from geolocations.services import get_distance_between_addresses
 
 
 class Login(forms.Form):
@@ -97,7 +98,7 @@ def view_orders(request):
         Prefetch(
             'items',
             queryset=OrderProduct.objects.select_related('product')
-        ),
+        )
     ).select_related('cooking_by').annotate(
         status_order=Case(
             When(status='waiting_for_acceptation', then=0),
@@ -112,14 +113,17 @@ def view_orders(request):
     orders = orders.annotate(
         total_price=Sum(F('items__final_price') * F('items__quantity'), output_field=DecimalField())
     )
+    orders = orders.available_for_order()
 
     order_items = []
 
+    # FIXME: написать нормальную логику для получения расстояния
     for order in orders:
-        available_restaurants = {
-            restaurant.name: 1
-            for restaurant in Restaurant.objects.available_for_order(order)
-        }
+        available_restaurants = {}
+        for restaurant in getattr(order, 'available_restaurants', []):
+            distance = get_distance_between_addresses(order.address, restaurant.address)
+            if distance is not None:
+                available_restaurants[restaurant.name] = distance
 
         order_items.append({
             'id': order.id,

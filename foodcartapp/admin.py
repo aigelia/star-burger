@@ -4,12 +4,10 @@ from django.templatetags.static import static
 from django.utils.html import format_html
 from django.utils.http import url_has_allowed_host_and_scheme
 
-from geolocations.services import fetch_coordinates, count_distance_to_restaurant
 from .models import Product, Order, OrderProduct
 from .models import ProductCategory
 from .models import Restaurant
 from .models import RestaurantMenuItem
-from geolocations.models import Location
 
 
 class RestaurantMenuItemInline(admin.TabularInline):
@@ -141,6 +139,25 @@ class OrderAdmin(admin.ModelAdmin):
         'called_at',
         'delivered_at',
     ]
+
+    def available_restaurants_display(self, obj):
+        """
+        Показываем доступные рестораны и расстояние до клиента.
+        Используем get_distance_between_addresses, чтобы не дергать API.
+        """
+        available = getattr(obj, 'available_restaurants', [])
+        restaurants_with_distance = {}
+
+        for restaurant in available:
+            distance = get_distance_between_addresses(obj.address, restaurant.address)
+            if distance is not None:
+                restaurants_with_distance[restaurant.name] = distance
+
+        return ", ".join(
+            [f"{name} ({distance:.1f} км)" for name, distance in restaurants_with_distance.items()]
+        )
+
+    available_restaurants_display.short_description = "Доступные рестораны"
 
     def response_change(self, request, obj):
         next_url = request.POST.get('next') or request.GET.get('next')

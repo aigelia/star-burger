@@ -1,7 +1,8 @@
-import requests
-
 from django.conf import settings
 from geopy.distance import geodesic
+import requests
+
+from geolocations.models import Location
 
 
 def fetch_coordinates(address):
@@ -31,12 +32,32 @@ def fetch_coordinates(address):
         return None
 
 
-def count_distance_to_restaurant(order_address, restaurant_address):
-    order_coords = fetch_coordinates(order_address)
-    restaurant_coords = fetch_coordinates(restaurant_address)
-
-    if not order_coords or not restaurant_coords:
+def get_or_create_location(address):
+    if not address:
         return None
 
-    distance_km = geodesic(order_coords, restaurant_coords).km
-    return distance_km
+    location, created = Location.objects.get_or_create(address=address)
+
+    if created:
+        coords = fetch_coordinates(address)
+        if coords:
+            location.lat, location.lng = coords
+            location.save()
+
+    return location
+
+
+def get_distance_between_addresses(address1, address2):
+    loc1 = get_or_create_location(address1)
+    loc2 = get_or_create_location(address2)
+
+    if not loc1 or not loc2:
+        return None
+
+    if loc1.lat is None or loc1.lng is None or loc2.lat is None or loc2.lng is None:
+        return None
+
+    coords1 = (float(loc1.lat), float(loc1.lng))
+    coords2 = (float(loc2.lat), float(loc2.lng))
+
+    return geodesic(coords1, coords2).km
