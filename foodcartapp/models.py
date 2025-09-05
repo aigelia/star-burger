@@ -148,6 +148,28 @@ class RestaurantMenuItem(models.Model):
         return f'{self.restaurant.name} - {self.product.name}'
 
 
+class OrderQuerySet(models.QuerySet):
+    def available_for_order(self):
+        restaurants = Restaurant.objects.prefetch_related('menu_items__product')
+        restaurant_menu = defaultdict(set)
+
+        for restaurant in restaurants:
+            for item in restaurant.menu_items.all():
+                restaurant_menu[restaurant].add(item.product)
+
+        for order in self:
+            products = set(item.product for item in order.items.all())
+            available_restaurants = []
+
+            for restaurant, menu_products in restaurant_menu.items():
+                if products.issubset(menu_products):
+                    available_restaurants.append(restaurant)
+
+            order.available_restaurants = available_restaurants
+
+        return self
+
+
 class Order(models.Model):
     STATUS_CHOICES = [
         ('waiting_for_acceptation', 'Ожидает подтверждения'),
@@ -218,6 +240,8 @@ class Order(models.Model):
         return ", ".join([r.name for r in self.get_available_restaurants()])
 
     available_restaurants_display.short_description = "Доступные рестораны"
+
+    objects = OrderQuerySet.as_manager()
 
     class Meta:
         verbose_name = 'заказ'
