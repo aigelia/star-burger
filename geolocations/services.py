@@ -11,15 +11,24 @@ def fetch_coordinates(address):
         "apikey": settings.YANDEX_API_GEOCODER_KEY,
         "format": "json",
     })
-    response.raise_for_status()
-    found_places = response.json()['response']['GeoObjectCollection']['featureMember']
 
+    if not response.ok:
+        return None
+
+    decoded_response = response.json()
+    if "error" in decoded_response:
+        return None
+
+    found_places = decoded_response['response']['GeoObjectCollection']['featureMember']
     if not found_places:
         return None
 
-    most_relevant = found_places[0]
-    lon, lat = most_relevant['GeoObject']['Point']['pos'].split(" ")
-    return float(lat), float(lon)
+    try:
+        most_relevant = found_places[0]
+        lon, lat = most_relevant['GeoObject']['Point']['pos'].split(" ")
+        return float(lat), float(lon)
+    except (KeyError, ValueError):
+        return None
 
 
 def count_distance_to_restaurant(order_address, restaurant_address):
