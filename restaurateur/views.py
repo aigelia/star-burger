@@ -116,15 +116,16 @@ def view_orders(request):
     orders = orders.available_for_order()
 
     order_items = []
-
-    # FIXME: написать нормальную логику для получения расстояния
     for order in orders:
-        available_restaurants = {}
+        restaurants_with_distance = {}
         for restaurant in getattr(order, 'available_restaurants', []):
             distance = get_distance_between_addresses(order.address, restaurant.address)
-            if distance is not None:
-                available_restaurants[restaurant.name] = distance
+            if distance:
+                restaurants_with_distance[restaurant.name] = distance
 
+        available_restaurants = dict(
+            sorted(restaurants_with_distance.items(), key=lambda item: item[1])
+        )
         order_items.append({
             'id': order.id,
             'status': order.get_status_display(),

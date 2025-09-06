@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 from django.contrib import admin
 from django.shortcuts import reverse, redirect
 from django.templatetags.static import static
@@ -141,23 +143,29 @@ class OrderAdmin(admin.ModelAdmin):
     ]
 
     def available_restaurants_display(self, obj):
-        """
-        Показываем доступные рестораны и расстояние до клиента.
-        Используем get_distance_between_addresses, чтобы не дергать API.
-        """
-        available = getattr(obj, 'available_restaurants', [])
-        restaurants_with_distance = {}
-
-        for restaurant in available:
-            distance = get_distance_between_addresses(obj.address, restaurant.address)
-            if distance is not None:
-                restaurants_with_distance[restaurant.name] = distance
-
-        return ", ".join(
-            [f"{name} ({distance:.1f} км)" for name, distance in restaurants_with_distance.items()]
-        )
+        order_products = {item.product_id for item in obj.items.all()}
+        available = [
+            self.restaurants[rid] for rid, products in self.restaurant_menu.items()
+            if order_products <= products
+        ]
+        return ", ".join(r.name for r in available) if available else "-"
 
     available_restaurants_display.short_description = "Доступные рестораны"
+
+    def get_queryset(self, request):
+        queryset = super().get_queryset(request).prefetch_related('items__product')
+        menu_items = (RestaurantMenuItem
+                      .objects
+                      .filter(availability=True)
+                      .select_related('restaurant')
+                      )
+        self.restaurant_menu = defaultdict(set)
+
+        for item in menu_items:
+            self.restaurant_menu[item.restaurant_id].add(item.product_id)
+
+        self.restaurants = {restaurant.id: restaurant for restaurant in Restaurant.objects.all()}
+        return queryset
 
     def response_change(self, request, obj):
         next_url = request.POST.get('next') or request.GET.get('next')

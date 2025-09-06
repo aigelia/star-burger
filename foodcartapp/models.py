@@ -196,12 +196,6 @@ class Order(models.Model):
         verbose_name='Дата и время доставки'
     )
 
-    def available_restaurants_display(self):
-        restaurants = getattr(self, 'available_restaurants', [])
-        return ", ".join([r.name for r in restaurants])
-
-    available_restaurants_display.short_description = "Доступные рестораны"
-
     def total_price(self):
         result = self.items.aggregate(
             total=Sum(F('final_price') * F('quantity'), output_field=DecimalField())

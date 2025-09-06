@@ -1,3 +1,5 @@
+from functools import lru_cache
+
 from django.conf import settings
 from geopy.distance import geodesic
 import requests
@@ -32,6 +34,7 @@ def fetch_coordinates(address):
         return None
 
 
+@lru_cache(maxsize=None)
 def get_or_create_location(address):
     if not address:
         return None
