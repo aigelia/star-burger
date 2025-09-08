@@ -94,21 +94,27 @@ def view_restaurants(request):
 
 @user_passes_test(is_manager, login_url='restaurateur:login')
 def view_orders(request):
-    orders = Order.objects.prefetch_related(
-        Prefetch(
-            'items',
-            queryset=OrderProduct.objects.select_related('product')
+    orders = (
+        Order.objects
+        .exclude(status='completed')
+        .prefetch_related(
+            Prefetch(
+                'items',
+                queryset=OrderProduct.objects.select_related('product')
+            )
         )
-    ).select_related('cooking_by').annotate(
-        status_order=Case(
-            When(status='waiting_for_acceptation', then=0),
-            When(status='sent_to_restaurant', then=1),
-            When(status='given_to_courier', then=2),
-            When(status='completed', then=3),
-            default=99,
-            output_field=IntegerField()
+        .select_related('cooking_by')
+        .annotate(
+            status_order=Case(
+                When(status='waiting_for_acceptation', then=0),
+                When(status='sent_to_restaurant', then=1),
+                When(status='given_to_courier', then=2),
+                default=99,
+                output_field=IntegerField(),
+            )
         )
-    ).order_by('status_order')
+        .order_by('status_order')
+    )
 
     orders = orders.annotate(
         total_price=Sum(F('items__final_price') * F('items__quantity'), output_field=DecimalField())
