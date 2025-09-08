@@ -124,14 +124,23 @@ def view_orders(request):
     order_items = []
     for order in orders:
         restaurants_with_distance = {}
-        for restaurant in getattr(order, 'available_restaurants', []):
-            distance = get_distance_between_addresses(order.address, restaurant.address)
-            if distance:
-                restaurants_with_distance[restaurant.name] = distance
+        address_not_found = False
+
+        available_for_order = getattr(order, 'available_restaurants', [])
+
+        if available_for_order:
+            for restaurant in available_for_order:
+                distance = get_distance_between_addresses(order.address, restaurant.address)
+                if distance:
+                    restaurants_with_distance[restaurant.name] = distance
+
+            if not restaurants_with_distance:
+                address_not_found = True
 
         available_restaurants = dict(
             sorted(restaurants_with_distance.items(), key=lambda item: item[1])
         )
+
         order_items.append({
             'id': order.id,
             'status': order.get_status_display(),
@@ -142,7 +151,8 @@ def view_orders(request):
             'comment': order.comment,
             'payment_method': order.get_payment_method_display(),
             'available_restaurants': available_restaurants,
-            'cooking_by': order.cooking_by
+            'cooking_by': order.cooking_by,
+            'address_not_found': address_not_found,
         })
 
     return render(request, 'order_items.html', context={'order_items': order_items})

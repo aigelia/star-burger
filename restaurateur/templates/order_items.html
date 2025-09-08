@@ -38,17 +38,22 @@
         <td>
           {% if item.cooking_by %}
             Готовит {{ item.cooking_by }}
+          {% elif item.address_not_found %}
+            Адрес не найден
           {% elif item.available_restaurants %}
             <details>
               <summary>Может быть приготовлен ресторанами: ↓</summary>
               <ul>
-                {% if item.available_restaurants %}
-                  {% for name, distance in item.available_restaurants.items %}
-                    <li>{{ name }} — {{ distance|floatformat:1 }} км</li>
-                  {% endfor %}
-                {% else %}
-                  <li>Нет доступных ресторанов</li>
-                {% endif %}
+                {% for name, distance in item.available_restaurants.items %}
+                  <li>
+                    {{ name }}
+                    {% if distance %}
+                      — {{ distance|floatformat:1 }} км
+                    {% else %}
+                      — расстояние не удалось рассчитать
+                    {% endif %}
+                  </li>
+                {% endfor %}
               </ul>
             </details>
           {% else %}
