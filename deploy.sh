@@ -15,9 +15,9 @@ git fetch origin "$BRANCH"
 git pull origin "$BRANCH" --rebase --autostash --quiet
 
 source "$PROJECT_DIR/.venv/bin/activate"
-pip install -r --no-input --quiet requirements.txt
+pip install --no-input --quiet -r requirements.txt
 
-npm ci --only=production --quiet
+npm ci --omit=dev --quiet
 ./node_modules/.bin/parcel build bundles-src/index.js --dist-dir bundles --public-url="./"
 
 python manage.py makemigrations --dry-run --check
@@ -25,7 +25,6 @@ python manage.py migrate --noinput
 python manage.py collectstatic --noinput
 
 sudo systemctl restart star-burger
-sudo systemctl start certbot-renewal.timer || true
 
 curl https://api.rollbar.com/api/1/deploy/ \
   -F access_token=$ROLLBAR_TOKEN \
