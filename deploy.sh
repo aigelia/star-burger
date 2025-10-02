@@ -1,27 +1,36 @@
 #!/bin/bash
 set -e
+set -a
+source .env
+set +a
 
 PROJECT_DIR="/opt/star-burger"
+cd "$PROJECT_DIR"
 BRANCH="master"
+LOCAL_USERNAME=$(whoami)
 
 echo "=== Deploy: pulling latest changes ==="
-cd "$PROJECT_DIR"
 
-git stash push -m "deploy backup" || true
 git fetch origin "$BRANCH"
-git pull origin "$BRANCH" --rebase
-git stash pop || true
+git pull origin "$BRANCH" --rebase --autostash --quiet
 
 source "$PROJECT_DIR/.venv/bin/activate"
-pip install -r requirements.txt
+pip install -r --no-input --quiet requirements.txt
 
+npm ci --only=production --quiet
 ./node_modules/.bin/parcel build bundles-src/index.js --dist-dir bundles --public-url="./"
 
-python manage.py makemigrations
-python manage.py migrate
+python manage.py makemigrations --dry-run --check
+python manage.py migrate --noinput
 python manage.py collectstatic --noinput
 
 sudo systemctl restart star-burger
 sudo systemctl start certbot-renewal.timer || true
+
+curl https://api.rollbar.com/api/1/deploy/ \
+  -F access_token=$ROLLBAR_TOKEN \
+  -F environment=$ROLLBAR_ENVIRONMENT \
+  -F revision=$(git rev-parse --short HEAD) \
+  -F local_username=$LOCAL_USERNAME
 
 echo "=== Deploy successfully finished! ==="
